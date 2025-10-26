@@ -127,5 +127,24 @@ pip install requests
 
 ---
 
+| Platform              | API Gateway URL                                                                  |
+| --------------------- | -------------------------------------------------------------------------------- |
+| **US1**               | [https://gateway.qg1.apps.qualys.com](https://gateway.qg1.apps.qualys.com)       |
+| **US2**               | [https://gateway.qg2.apps.qualys.com](https://gateway.qg2.apps.qualys.com)       |
+| **US3**               | [https://gateway.qg3.apps.qualys.com](https://gateway.qg3.apps.qualys.com)       |
+| **US4**               | [https://gateway.qg4.apps.qualys.com](https://gateway.qg4.apps.qualys.com)       |
+| **GOV1**              | [https://gateway.gov1.qualys.us](https://gateway.gov1.qualys.us)                 |
+| **EU1**               | [https://gateway.qg1.apps.qualys.eu](https://gateway.qg1.apps.qualys.eu)         |
+| **EU2**               | [https://gateway.qg2.apps.qualys.eu](https://gateway.qg2.apps.qualys.eu)         |
+| **EU3**               | [https://gateway.qg3.apps.qualys.it](https://gateway.qg3.apps.qualys.it)         |
+| **IN1**               | [https://gateway.qg1.apps.qualys.in](https://gateway.qg1.apps.qualys.in)         |
+| **CA1**               | [https://gateway.qg1.apps.qualys.ca](https://gateway.qg1.apps.qualys.ca)         |
+| **AE1**               | [https://gateway.qg1.apps.qualys.ae](https://gateway.qg1.apps.qualys.ae)         |
+| **UK1**               | [https://gateway.qg1.apps.qualys.co.uk](https://gateway.qg1.apps.qualys.co.uk)   |
+| **AU1**               | [https://gateway.qg1.apps.qualys.com.au](https://gateway.qg1.apps.qualys.com.au) |
+| **KSA1**              | [https://gateway.qg1.apps.qualysksa.com](https://gateway.qg1.apps.qualysksa.com) |
+| **Private Platforms** | [https://qualysgateway](https://qualysgateway).<customer_base_url>               |
+
+---
 ## 🪶 Author Notes
 This script provides a reliable, incremental way to extract and analyze Qualys container security data, ensuring that weekly history is preserved and redundant downloads are avoided.
