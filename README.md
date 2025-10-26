@@ -127,6 +127,10 @@ pip install requests
 
 ---
 
+Platform Gateway URLs
+Below is a list of Qualys API Gateway URLs by platform.
+Select the correct one for your Qualys subscription region:
+
 | Platform              | API Gateway URL                                                                  |
 | --------------------- | -------------------------------------------------------------------------------- |
 | **US1**               | [https://gateway.qg1.apps.qualys.com](https://gateway.qg1.apps.qualys.com)       |
