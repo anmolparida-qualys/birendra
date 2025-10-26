@@ -16,11 +16,11 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # === Configuration ===
 TOKEN = ""
-BASE_URL = "https://gateway.qg2.apps.qualys.com/csapi/v1.3/containers/list"
+BASE_URL = ""
 LIMIT = 250
 TEMP_DIR = "temp_reports"
 FINAL_JSON_DIR = "weekly_reports"
-FINAL_CSV_DIR = "weekly_csv_reports"  # Separate directory for CSVs
+FINAL_CSV_DIR = "weekly_csv_reports"
 
 # === Hardcoded CSV Columns (one row per vulnerability QID) ===
 CSV_COLUMNS = [
@@ -45,16 +45,35 @@ CSV_COLUMNS = [
 
 # === CLI Arguments ===
 parser = argparse.ArgumentParser(description="Fetch weekly container data from Qualys API.")
+parser.add_argument("BASE_URL", nargs="?", help="Qualys Gateway URL (e.g. https://gateway.qg2.apps.qualys.com)")
 parser.add_argument("--optional_filter", help="Optional additional filter to combine with created filter", default="")
 parser.add_argument("--start_date", help="Start date (YYYY-MM-DD). Optional.", default="")
 parser.add_argument("--end_date", help="End date (YYYY-MM-DD). Optional.", default="")
 parser.add_argument("--csv_columns", help="Optional comma-separated list of CSV columns to override defaults.", default="")
 args = parser.parse_args()
+
+# === Validate and Construct Full API URL ===
+BASE_URL = args.BASE_URL.strip() if args.BASE_URL else ""
+if not BASE_URL:
+    print("[ERROR] BASE_URL is required. Example:")
+    print("  python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com")
+    sys.exit(1)
+
+# Ensure API endpoint suffix
+if not BASE_URL.endswith("/csapi/v1.3/containers/list"):
+    BASE_URL = BASE_URL.rstrip("/") + "/csapi/v1.3/containers/list"
+
 optional_filter = args.optional_filter.strip()
 start_date_arg = args.start_date.strip()
 end_date_arg = args.end_date.strip()
 
 TOKEN = os.getenv("QUALYS_TOKEN", TOKEN)
+
+# Check token presence
+if not TOKEN:
+    print("[ERROR] Missing QUALYS_TOKEN. Please export it first:")
+    print("  export QUALYS_TOKEN='<your_api_token_here>'")
+    sys.exit(1)
 
 if args.csv_columns.strip():
     CSV_COLUMNS = [c.strip() for c in args.csv_columns.split(",") if c.strip()]
@@ -96,7 +115,7 @@ def fetch_paginated_data(filter_query):
     while url:
         print(f"[+] Fetching PAGE {page} for filter {filter_query}")
         response = requests.get(url, headers=HEADERS, params=params if page == 1 else None, verify=False)
-        time.sleep(0.1)
+        time.sleep(0.2)  # safer pacing for API calls
 
         if response.status_code == 401:
             print(f"[ERROR] Unauthorized (401). Token may be invalid or expired. Exiting script.")
@@ -145,13 +164,15 @@ def get_existing_week_files():
     return week_files
 
 def generate_all_week_ranges(start_date, end_date):
+    if start_date >= end_date:
+        print("[ERROR] No valid date range selected.")
+        sys.exit(1)
     weeks = []
     for week_start, week_end in daterange(start_date, end_date):
         filename = f"{week_start.strftime('%b%d')}-{week_end.strftime('%b%d')}.json"
         weeks.append((week_start, week_end, filename))
     return weeks
 
-# === Safe nested getter ===
 def get_nested_value(obj, path):
     """Safely get a nested value using dotted or indexed notation."""
     try:
@@ -179,7 +200,6 @@ def sanitize_cell(v):
         return ""
     return str(v).replace("\n", " ").replace("\r", " ").strip()
 
-# Base (non-vuln) columns
 BASE_CONTAINER_COLUMNS = [c for c in CSV_COLUMNS if not c.startswith("vuln_")]
 
 def build_container_base(container):
@@ -194,15 +214,11 @@ def flatten_vuln(v):
     firstFound = sanitize_cell(v.get("firstFound"))
     lastFound  = sanitize_cell(v.get("lastFound"))
     typeDetected = sanitize_cell(v.get("typeDetected"))
-
-    # scanType can be list or scalar
     scan_types = v.get("scanType", [])
     if isinstance(scan_types, list):
         scan_types = ", ".join([sanitize_cell(x) for x in scan_types if sanitize_cell(x)])
     else:
         scan_types = sanitize_cell(scan_types)
-
-    # software list: support either "name" OR "software" key for the display name
     sw_list = v.get("software", [])
     names, versions, fixes, paths = [], [], [], []
     if isinstance(sw_list, list):
@@ -212,33 +228,22 @@ def flatten_vuln(v):
             versions.append(sanitize_cell(sw.get("version")))
             fixes.append(sanitize_cell(sw.get("fixVersion")))
             paths.append(sanitize_cell(sw.get("packagePath")))
-    names_str = ", ".join([x for x in names if x])
-    vers_str  = ", ".join([x for x in versions if x])
-    fixes_str = ", ".join([x for x in fixes if x])
-    paths_str = ", ".join([x for x in paths if x])
-
     return {
         "vuln_qid": qid,
         "vuln_firstFound": firstFound,
         "vuln_lastFound": lastFound,
         "vuln_typeDetected": typeDetected,
         "vuln_scanTypes": scan_types,
-        "vuln_software_names": names_str,
-        "vuln_software_versions": vers_str,
-        "vuln_software_fixVersions": fixes_str,
-        "vuln_software_packagePaths": paths_str,
+        "vuln_software_names": ", ".join(names),
+        "vuln_software_versions": ", ".join(versions),
+        "vuln_software_fixVersions": ", ".join(fixes),
+        "vuln_software_packagePaths": ", ".join(paths),
     }
 
 def expand_container_to_rows(container):
-    """
-    Returns a list of row dicts:
-    - If vulnerabilities present: one row per QID
-    - If no vulnerabilities: one row with vuln_* columns blank
-    """
     rows = []
     base = build_container_base(container)
     vulns = container.get("vulnerabilities")
-
     if isinstance(vulns, list) and len(vulns) > 0:
         for v in vulns:
             row = dict(base)
@@ -253,7 +258,6 @@ def expand_container_to_rows(container):
             if col not in row:
                 row[col] = ""
         rows.append(row)
-
     for r in rows:
         for k in r:
             r[k] = sanitize_cell(r[k])
@@ -264,14 +268,12 @@ def write_weekly_csv(week_data, csv_path):
     if not week_data:
         print(f"[i] No data for this week — skipping CSV: {os.path.basename(csv_path)}")
         return
-
     total_rows = 0
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=CSV_COLUMNS, quoting=csv.QUOTE_ALL)
         writer.writeheader()
         for item in week_data:
             for row in expand_container_to_rows(item):
-                #Filter out any keys not in CSV_COLUMNS to avoid ValueError
                 filtered_row = {col: row.get(col, "") for col in CSV_COLUMNS}
                 writer.writerow(filtered_row)
                 total_rows += 1

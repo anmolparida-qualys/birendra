@@ -43,9 +43,12 @@ If both an environment token and in-script token exist:
 
 ## Usage
 
+Note: The first argument is always the Qualys Gateway URL for your platform (see table below).
+Example gateway: https://gateway.qg2.apps.qualys.com
+
 ### 1️⃣ Default Run (Last 52 Weeks)
 ```bash
-python3 weeklycontainerreport.py
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com
 ```
 
 Fetches container data for the past year using default columns and date ranges.
@@ -54,14 +57,15 @@ Fetches container data for the past year using default columns and date ranges.
 
 ### 2️⃣ Specify Date Range
 ```bash
-python3 weeklycontainerreport.py --start_date 2025-09-27 --end_date 2025-10-04
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com \
+  --start_date 2025-09-27 --end_date 2025-10-04
 ```
 
 ---
 
 ### 3️⃣ Apply Optional Filter
 ```bash
-python3 weeklycontainerreport.py \
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com \
   --start_date 2025-09-27 \
   --end_date 2025-10-04 \
   --optional_filter "state:RUNNING and imageId:d1a50f311f32"
@@ -71,7 +75,7 @@ python3 weeklycontainerreport.py \
 
 ### 4️⃣ Custom CSV Columns
 ```bash
-python3 weeklycontainerreport.py \
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com \
   --csv_columns "containerId,uuid,name,state,vuln_qid,vuln_software_names"
 ```
 
@@ -79,7 +83,7 @@ python3 weeklycontainerreport.py \
 
 ### 5️⃣ Combine All Options
 ```bash
-python3 weeklycontainerreport.py \
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com \
   --start_date 2025-10-22 \
   --end_date 2025-10-25 \
   --optional_filter "state:RUNNING and imageId:d1a50f311f32" \
