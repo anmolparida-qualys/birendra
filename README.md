@@ -43,8 +43,10 @@ If both an environment token and in-script token exist:
 
 ## Usage
 
-Note: The first argument is always the Qualys Gateway URL for your platform (see table below).
-Example gateway: https://gateway.qg2.apps.qualys.com
+> ⚙️ **Note:** The first argument is always the **Qualys Gateway URL** for your platform (see table below).  
+> Example gateway: `https://gateway.qg2.apps.qualys.com`
+
+---
 
 ### 1️⃣ Default Run (Last 52 Weeks)
 ```bash
@@ -57,38 +59,66 @@ Fetches container data for the past year using default columns and date ranges.
 
 ### 2️⃣ Specify Date Range
 ```bash
-python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com \
-  --start_date 2025-09-27 --end_date 2025-10-04
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com   --start_date 2025-09-27 --end_date 2025-10-04
 ```
 
 ---
 
 ### 3️⃣ Apply Optional Filter
 ```bash
-python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com \
-  --start_date 2025-09-27 \
-  --end_date 2025-10-04 \
-  --optional_filter "state:RUNNING and imageId:d1a50f311f32"
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com   --start_date 2025-09-27   --end_date 2025-10-04   --optional_filter "state:RUNNING and imageId:d1a50f311f32"
 ```
 
 ---
 
 ### 4️⃣ Custom CSV Columns
 ```bash
-python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com \
-  --csv_columns "containerId,uuid,name,state,vuln_qid,vuln_software_names"
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com   --csv_columns "containerId,uuid,name,state,vuln_qid,vuln_software_names"
 ```
 
 ---
 
 ### 5️⃣ Combine All Options
 ```bash
-python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com \
-  --start_date 2025-10-22 \
-  --end_date 2025-10-25 \
-  --optional_filter "state:RUNNING and imageId:d1a50f311f32" \
-  --csv_columns "containerId,uuid,name,state,vuln_qid,vuln_software_names"
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com   --start_date 2025-10-22   --end_date 2025-10-25   --optional_filter "state:RUNNING and imageId:d1a50f311f32"   --csv_columns "containerId,uuid,name,state,vuln_qid,vuln_software_names"
 ```
+
+---
+
+### 📄 Supported CSV Column Names
+When using the `--csv_columns` flag, only the following column names are supported.  
+Custom column sets **must** be chosen from this list (you can specify any subset, comma-separated):
+
+```text
+# Container identity & status
+containerId, uuid, name, state, ipv4, ipv6,
+created, updated, stateChanged, riskScore, qdsSeverity, maxQdsScore,
+imageId, imageSha, imageUuid, customerUuid, privileged, isRoot,
+isVulnPropagated, source, sensorUuid,
+
+# Host / cluster info
+host.sensorUuid, host.hostname, host.ipAddress,
+cluster.name, cluster.uid, cluster.version,
+cluster.k8s.pod.name, cluster.k8s.pod.namespace, cluster.k8s.pod.uuid,
+cluster.k8s.pod.controller[0].name, cluster.k8s.pod.controller[0].type,
+hostArchitecture,
+
+# Runtime context
+environment, command, arguments,
+
+# Vulnerability fields (one row per QID)
+vuln_qid, vuln_firstFound, vuln_lastFound, vuln_typeDetected, vuln_scanTypes,
+
+# From vulnerability.software[] (joined if multiple)
+vuln_software_names, vuln_software_versions, vuln_software_fixVersions, vuln_software_packagePaths
+```
+
+**Example:**
+```bash
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com   --csv_columns "containerId,name,state,vuln_qid,vuln_software_names"
+```
+
+If a column outside this list is provided, it will appear as blank in the CSV output.
 
 ---
 
@@ -125,15 +155,15 @@ pip install requests
 | **Formats** | JSON + CSV |
 | **Token Retry** | Automatic fallback |
 | **Date Range** | Weekly batching |
-| **Custom Columns** |  |
-| **Filters** |  |
-| **Logging** |  Detailed logs in `logs/` |
+| **Custom Columns** | Supported |
+| **Filters** | Supported |
+| **Logging** | Detailed logs in `logs/` |
 
 ---
 
-Platform Gateway URLs
-Below is a list of Qualys API Gateway URLs by platform.
-Select the correct one for your Qualys subscription region:
+## 🌐 Platform Gateway URLs
+Below is a list of **Qualys API Gateway URLs** by platform.  
+You must pass the correct gateway URL for your Qualys subscription region as the **first argument** to the script.
 
 | Platform              | API Gateway URL                                                                  |
 | --------------------- | -------------------------------------------------------------------------------- |
@@ -151,8 +181,9 @@ Select the correct one for your Qualys subscription region:
 | **UK1**               | [https://gateway.qg1.apps.qualys.co.uk](https://gateway.qg1.apps.qualys.co.uk)   |
 | **AU1**               | [https://gateway.qg1.apps.qualys.com.au](https://gateway.qg1.apps.qualys.com.au) |
 | **KSA1**              | [https://gateway.qg1.apps.qualysksa.com](https://gateway.qg1.apps.qualysksa.com) |
-| **Private Platforms** | [https://qualysgateway](https://qualysgateway).<customer_base_url>               |
+| **Private Platforms** | [https://qualysgateway.<customer_base_url>](https://qualysgateway.<customer_base_url>) |
 
 ---
+
 ## 🪶 Author Notes
 This script provides a reliable, incremental way to extract and analyze Qualys container security data, ensuring that weekly history is preserved and redundant downloads are avoided.
