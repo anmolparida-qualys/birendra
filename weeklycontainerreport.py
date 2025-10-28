@@ -16,8 +16,6 @@ import tzlocal   # pip install tzlocal
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # === Configuration ===
-TOKEN = ""
-BASE_URL = ""
 LIMIT = 250
 TEMP_DIR = "temp_reports"
 FINAL_JSON_DIR = "weekly_reports"
@@ -47,23 +45,40 @@ CSV_COLUMNS = [
 # === CLI Arguments ===
 parser = argparse.ArgumentParser(description="Fetch weekly container data from Qualys API.")
 parser.add_argument("BASE_URL", nargs="?", help="Qualys Gateway URL (e.g. https://gateway.qg2.apps.qualys.com)")
+parser.add_argument("--base_url_env", action="store_true",
+                    help="Read Qualys Gateway URL from the environment variable QUALYS_GATEWAY.")
 parser.add_argument("--optional_filter", help="Additional filter expression", default="")
 parser.add_argument("--start_date", help="Start date (YYYY-MM-DD)", default="")
 parser.add_argument("--end_date", help="End date (YYYY-MM-DD)", default="")
 parser.add_argument("--csv_columns", help="Comma-separated list of CSV columns to override defaults.", default="")
 args = parser.parse_args()
 
-# === URL & Token Validation ===
-BASE_URL = args.BASE_URL.strip() if args.BASE_URL else ""
+# === URL Handling ===
+if args.base_url_env:
+    BASE_URL = os.getenv("QUALYS_GATEWAY", "").strip()
+    if not BASE_URL:
+        print("[ERROR] Environment variable QUALYS_GATEWAY not set.")
+        print("        Please export it before running:")
+        print("        export QUALYS_GATEWAY='https://gateway.qg2.apps.qualys.com'")
+        sys.exit(1)
+else:
+    BASE_URL = args.BASE_URL.strip() if args.BASE_URL else ""
+
 if not BASE_URL:
-    print("[ERROR] BASE_URL required. Example: python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com")
+    print("[ERROR] BASE_URL required. Example:")
+    print("        python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com")
+    print("    or use --base_url_env with QUALYS_GATEWAY exported.")
     sys.exit(1)
+
 if not BASE_URL.endswith("/csapi/v1.3/containers/list"):
     BASE_URL = BASE_URL.rstrip("/") + "/csapi/v1.3/containers/list"
 
-TOKEN = os.getenv("QUALYS_TOKEN", TOKEN)
+# === Token (Environment Only) ===
+TOKEN = os.getenv("QUALYS_TOKEN")
 if not TOKEN:
-    print("[ERROR] Missing QUALYS_TOKEN. Run: export QUALYS_TOKEN='<your_api_token_here>'")
+    print("[ERROR] Environment variable QUALYS_TOKEN not set.")
+    print("        Please export it before running:")
+    print("        export QUALYS_TOKEN='<your_api_token_here>'")
     sys.exit(1)
 
 optional_filter = args.optional_filter.strip()
@@ -106,7 +121,7 @@ def fetch_paginated_data(filter_query):
         r = requests.get(url, headers=HEADERS, params=params if page == 1 else None, verify=False)
         time.sleep(0.2)
         if r.status_code == 401:
-            print("[ERROR] Unauthorized (401) – token may be invalid. Exiting.")
+            print("[ERROR] Unauthorized (401) – token may be invalid or expired.")
             sys.exit(1)
         if r.status_code != 200:
             print(f"[ERROR] {r.status_code}: {r.text}")
@@ -272,7 +287,6 @@ if __name__ == "__main__":
               f"(UTC {datetime.utcfromtimestamp(epoch_start/1000):%Y-%m-%d %H:%M:%S}Z → "
               f"{datetime.utcfromtimestamp(epoch_end/1000):%Y-%m-%d %H:%M:%S}Z)")
 
-        # === Build filter query ===
         filter_query = f"created:[{epoch_start} ... {epoch_end}]"
         if optional_filter:
             filter_query += f" and {optional_filter}"
@@ -286,7 +300,6 @@ if __name__ == "__main__":
         print(f"Moved JSON to final directory: {final_json}")
 
         write_weekly_csv(week_data, csv_file)
-
         total_containers += len(week_data)
         print(f"Week {fname} — {len(week_data)} containers processed.\n")
 
