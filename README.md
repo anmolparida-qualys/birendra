@@ -1,3 +1,4 @@
+
 # Weekly Container Report — Qualys API Integration
 
 ## Description
@@ -10,7 +11,7 @@ It automatically organizes and exports container data in **JSON** and **CSV** fo
   - `weekly_csv_reports/` → CSV (only weeks with data)
 - Automatically skips previously fetched weeks
 - Supports date ranges, filters, and custom CSV columns
-- Includes automatic token retry and detailed logging
+- Includes detailed logging and error handling
 
 ---
 
@@ -25,19 +26,60 @@ It automatically organizes and exports container data in **JSON** and **CSV** fo
 
 ---
 
-## 🔐 Authentication
+## 🔐 Authentication & Gateway Configuration
 
-Before running the script, export your **Qualys Access Token**:
+The script uses **environment variables only** for authentication and configuration — no hardcoded fallback tokens.
+
+### 1️⃣ Export Your Qualys Access Token
+
+Before running, set the `QUALYS_TOKEN` environment variable:
 
 ```bash
 export QUALYS_TOKEN="your_qualys_access_token_here"
 ```
 
-You can find it in **Qualys UI → Configurations → Access Token**.  
-If both an environment token and in-script token exist:
-- The **environment token** is used first.  
-- If it fails (401 / JWT error), the **in-script token** is tried automatically.  
-- If both fail, the script exits cleanly.
+You can find it in **Qualys UI → Container Security → Configuration → API Access Token**.  
+If the token is missing or invalid, the script exits immediately with an error.
+
+---
+
+### 2️⃣ Provide the Qualys Gateway URL
+
+You can provide the **Qualys API Gateway URL** either:
+
+#### 🅐 **Via CLI Argument** (default)
+```bash
+python3 weeklycontainerreport.py https://gateway.qg2.apps.qualys.com
+```
+
+#### 🅑 **Or via Environment Variable**
+```bash
+export QUALYS_GATEWAY="https://gateway.qg2.apps.qualys.com"
+python3 weeklycontainerreport.py --base_url_env
+```
+
+If the `QUALYS_GATEWAY` variable is missing while using `--base_url_env`, the script exits with an error.
+
+---
+
+### 3️⃣ Combined Example
+
+```bash
+export QUALYS_TOKEN="your_api_token_here"
+export QUALYS_GATEWAY="https://gateway.qg2.apps.qualys.com"
+python3 weeklycontainerreport.py --base_url_env
+```
+
+✅ This setup is ideal for CI/CD pipelines, cron jobs, or secure automated runs — no secrets appear in command history or source files.
+
+---
+
+### 4️⃣ Environment Variables Summary
+
+| Variable | Required | Description |
+|-----------|-----------|-------------|
+| `QUALYS_TOKEN` | ✅ | Bearer token for Qualys API authentication |
+| `QUALYS_GATEWAY` | ⚙️ Optional | API Gateway base URL (used when `--base_url_env` flag is set) |
 
 ---
 
@@ -126,8 +168,8 @@ If a column outside this list is provided, it will appear as blank in the CSV ou
 
 | Error Type | Script Behavior |
 |-------------|----------------|
-| 401 / 403 Unauthorized | Retries with fallback token, exits if both fail |
-| JWT Parsing Failed | Treated as token error, triggers retry |
+| 401 / 403 Unauthorized | Exits immediately with error |
+| JWT Parsing Failed | Treated as token error, exits |
 | Empty Data Week | JSON created, CSV skipped |
 | Invalid Dates | Graceful error message and exit |
 | Duplicate Week | Skipped automatically |
@@ -138,12 +180,11 @@ If a column outside this list is provided, it will appear as blank in the CSV ou
 
 - Python **3.8+**
 - Internet access to Qualys API
-- Module: `requests`
+- Modules: `requests`, `tzlocal`
 
 Install dependencies:
 ```bash
-pip install requests
-pip install tzlocal
+pip install requests tzlocal
 ```
 
 ---
@@ -154,7 +195,7 @@ pip install tzlocal
 |----------|-------------|
 | **API** | `/csapi/v1.3/containers/list` |
 | **Formats** | JSON + CSV |
-| **Token Retry** | Automatic fallback |
+| **Token Handling** | Environment-only |
 | **Date Range** | Weekly batching |
 | **Custom Columns** | Supported |
 | **Filters** | Supported |
@@ -163,8 +204,9 @@ pip install tzlocal
 ---
 
 ## 🌐 Platform Gateway URLs
+
 Below is a list of **Qualys API Gateway URLs** by platform.  
-You must pass the correct gateway URL for your Qualys subscription region as the **first argument** to the script.
+You must pass the correct gateway URL for your Qualys subscription region as the **first argument** to the script, or through the environment variable when using `--base_url_env`.
 
 | Platform              | API Gateway URL                                                                  |
 | --------------------- | -------------------------------------------------------------------------------- |
@@ -186,5 +228,5 @@ You must pass the correct gateway URL for your Qualys subscription region as the
 
 ---
 
-## 🪶 Author Notes
+## Author Notes
 This script provides a reliable, incremental way to extract and analyze Qualys container security data, ensuring that weekly history is preserved and redundant downloads are avoided.
