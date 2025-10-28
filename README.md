@@ -143,6 +143,7 @@ If a column outside this list is provided, it will appear as blank in the CSV ou
 Install dependencies:
 ```bash
 pip install requests
+import tzlocal
 ```
 
 ---
